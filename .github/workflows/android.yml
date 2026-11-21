@@ -21,6 +21,8 @@ jobs:
           java-version: '17'
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
       - name: Run tests
         run: ./gradlew testDebugUnitTest
       - name: Build debug APK
@@ -40,6 +42,9 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Build self-contained receiver
         run: dotnet publish windows-receiver/StratagemCaller.Receiver.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o windows-receiver/publish
+      - name: Apply branded receiver filename
+        shell: pwsh
+        run: Rename-Item -LiteralPath "windows-receiver/publish/MightyFrOg-Stratagem-Reciver.exe" -NewName "MightyFrOg's Stratagem Reciver.exe"
       - name: Test receiver discovery and protocol
         shell: pwsh
         run: ./scripts/test_receiver.ps1

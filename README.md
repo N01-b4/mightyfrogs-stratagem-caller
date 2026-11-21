@@ -53,9 +53,10 @@ The validator checks entry identifiers, codes, permanent stratagem sequences, an
 
 Requirements: JDK 17, Android SDK Platform 35, .NET 8 SDK, and Windows for building the receiver icon/publish package.
 
-```bat
-gradlew.bat testDebugUnitTest assembleRelease
+```powershell
+.\gradlew.bat testDebugUnitTest assembleRelease
 dotnet publish windows-receiver\StratagemCaller.Receiver.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o windows-receiver\publish
+Rename-Item -LiteralPath "windows-receiver\publish\MightyFrOg-Stratagem-Reciver.exe" -NewName "MightyFrOg's Stratagem Reciver.exe"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test_receiver.ps1
 ```
 
