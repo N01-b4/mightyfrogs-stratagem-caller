@@ -22,4 +22,8 @@ interface StratagemDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(entries: List<Stratagem>)
+
+    @Query("DELETE FROM stratagems")
+    suspend fun clear()
+
 }

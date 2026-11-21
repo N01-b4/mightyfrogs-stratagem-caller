@@ -1,5 +1,11 @@
 .gradle/
 **/build/
+.kotlin/
+windows-receiver/bin/
+windows-receiver/obj/
+windows-receiver/dist/
+windows-receiver/publish/
+release-output/
 local.properties
 .idea/
 *.iml

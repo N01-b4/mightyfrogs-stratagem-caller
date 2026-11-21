@@ -3,8 +3,12 @@ name: Android CI and Release
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -25,5 +29,57 @@ jobs:
         run: ./gradlew assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: stratagem-caller-apks
-          path: app/build/outputs/apk/**/*.apk
+          name: android-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+  windows-receiver:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build self-contained receiver
+        run: dotnet publish windows-receiver/StratagemCaller.Receiver.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o windows-receiver/publish
+      - name: Test receiver discovery and protocol
+        shell: pwsh
+        run: ./scripts/test_receiver.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mightyfrog-stratagem-reciver-windows
+          path: "windows-receiver/publish/MightyFrOg's Stratagem Reciver.exe"
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ build, windows-receiver ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-release-apk
+          path: release-package/Android
+      - uses: actions/download-artifact@v4
+        with:
+          name: mightyfrog-stratagem-reciver-windows
+          path: release-package/Windows
+      - name: Assemble release package
+        run: |
+          mkdir -p release-package/Branding
+          cp README.md LICENSE CHANGELOG.md CONTRIBUTING.md SUPPORT.md SECURITY.md CITATION.cff release-package/
+          cp branding/MightyFrOg-Stratagem-Caller.png branding/MightyFrOg-Stratagem-Reciver.png release-package/Branding/
+          mv release-package/Android/app-release.apk "release-package/Android/MightyFrOg's Stratagem caller-${GITHUB_REF_NAME}.apk"
+          (
+            cd release-package
+            zip -qr "../MightyFrOg-Stratagem-Caller-${GITHUB_REF_NAME}.zip" .
+          )
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "MightyFrOg-Stratagem-Caller-${GITHUB_REF_NAME}.zip" \
+            "release-package/Android/MightyFrOg's Stratagem caller-${GITHUB_REF_NAME}.apk" \
+            "release-package/Windows/MightyFrOg's Stratagem Reciver.exe" \
+            --title "MightyFrOg's Stratagem caller ${GITHUB_REF_NAME}" \
+            --notes-file CHANGELOG.md

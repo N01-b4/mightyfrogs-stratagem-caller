@@ -3,8 +3,10 @@ package com.mightyfrog.stratagemcaller.macro
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class MacroDirection { UP, DOWN, LEFT, RIGHT }
 
@@ -16,15 +18,26 @@ interface MacroOutput {
 }
 
 class MacroEngine(private val output: MacroOutput) {
+    companion object {
+        const val DEFAULT_KEY_HOLD_MS = 55L
+        const val INTER_KEY_GAP_MS = 25L
+    }
+
     private var job: Job? = null
 
-    fun execute(scope: CoroutineScope, directions: List<Char>, directionDelayMs: Long = 90, onRunning: (Boolean) -> Unit) {
+    fun execute(
+        scope: CoroutineScope,
+        directions: List<Char>,
+        directionDelayMs: Long = DEFAULT_KEY_HOLD_MS,
+        onRunning: (Boolean) -> Unit,
+        onError: (String) -> Unit
+    ) {
         if (job?.isActive == true) return
         job = scope.launch {
             try {
                 onRunning(true)
                 output.activate()
-                for (direction in directions) {
+                for ((index, direction) in directions.withIndex()) {
                     val value = when (direction.uppercaseChar()) {
                         'U' -> MacroDirection.UP
                         'D' -> MacroDirection.DOWN
@@ -35,14 +48,20 @@ class MacroEngine(private val output: MacroOutput) {
                     output.direction(value)
                     delay(directionDelayMs)
                     output.releaseDirection(value)
-                    delay(directionDelayMs)
+                    if (index < directions.lastIndex) delay(INTER_KEY_GAP_MS)
                 }
-            } catch (_: CancellationException) {
-                output.releaseAll()
-            } catch (_: Exception) {
-                output.releaseAll()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                onError(error.message ?: "Controller connection failed.")
             } finally {
-                output.releaseAll()
+                withContext(NonCancellable) {
+                    try {
+                        output.releaseAll()
+                    } catch (error: Exception) {
+                        onError(error.message ?: "Could not release controller inputs.")
+                    }
+                }
                 onRunning(false)
             }
         }

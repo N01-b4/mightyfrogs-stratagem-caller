@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>MightyFrOg's Stratagem Reciver</AssemblyName>
+    <Product>MightyFrOg's Stratagem Reciver</Product>
+    <Description>Windows Wi-Fi receiver for MightyFrOg's Stratagem caller</Description>
+    <ApplicationIcon>mightyfrog.ico</ApplicationIcon>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

@@ -1,72 +1,81 @@
-# Stratagem Caller for Android
+<div align="center">
+  <img src="branding/MightyFrOg-Stratagem-Caller.png" alt="MightyFrOg's Stratagem caller" width="220">
+  <h1>MightyFrOg's Stratagem caller</h1>
+  <p>Fast, offline stratagem input from Android to Helldivers 2 on Windows.</p>
+  <a href="https://github.com/N01-b4/mightyfrogs-stratagem-caller/actions/workflows/android.yml"><img src="https://github.com/N01-b4/mightyfrogs-stratagem-caller/actions/workflows/android.yml/badge.svg?branch=main" alt="Android and Windows CI"></a>
+</div>
 
-Stratagem Caller is a native Android macro caller for Helldivers 2. It provides an offline bundled catalog, fixed 12-position mission layout, loadout configuration, macro sequencing, Bluetooth capability detection, and a documented USB HID bridge protocol.
+## What it does
 
-## Status
+The Android app provides a landscape stratagem grid and sends the selected direction sequence over local Wi-Fi to the Windows receiver. The receiver injects keyboard input into the active Windows game. The personal loadout and mission-specific call-ins have separate selection lists.
 
-This repository contains the implementation and a buildable Android Studio project. Bluetooth HID and USB hardware interfaces require a compatible Pixel/device and physical controller bridge for end-to-end verification. In-game execution is not claimed unless tested with Helldivers 2.
+### Package contents
 
-## Features
+- **Android:** `MightyFrOg's Stratagem caller` — Android 11/API 30 or newer.
+- **Windows:** `MightyFrOg's Stratagem Reciver` — self-contained x64 executable for Windows 11 PC or Steam Deck.
+- **Default keys:** hold Left Ctrl; arrow keys for Up, Down, Left, Right.
+- **Default input timing:** 55 ms key-down, with a 25 ms gap between arrows.
 
-- Fixed 4x3 mission grid with permanent Resupply and Reinforce slots
-- Exactly four personal selections and up to six mission selections
-- Bundled Room database seeded from an offline catalog asset
-- Search and category filtering
-- Macro engine with held LB behavior, cancellation, and release-all
-- Bluetooth HID capability detection
-- USB bridge protocol for compatible external HID hardware
-- Settings and diagnostic surfaces
+> **Important:** This is keyboard automation, not a virtual Xbox controller. Configure Helldivers 2 to use the matching stratagem key bindings. The Windows receiver must run on the same Windows device as the game.
 
-## Build
+## Download and setup
 
-Requirements: JDK 17 and Android Studio / Android SDK Platform 35.
+Download the latest APK and Windows receiver from the [GitHub Releases](https://github.com/N01-b4/mightyfrogs-stratagem-caller/releases) page, or use the combined `MightyFrOg-Stratagem-Caller-v1.3.0.zip` package.
 
-```bat
-gradlew.bat assembleDebug
-gradlew.bat assembleRelease
-gradlew.bat testDebugUnitTest
+1. Install the APK on the Android phone. Android may ask you to allow installation from the browser or file manager used to open it.
+2. On the Windows 11 PC or Steam Deck running the game, extract and launch `MightyFrOg's Stratagem Reciver.exe`.
+3. Keep the receiver running, open the caller app, and approve the receiver once.
+4. Confirm the game uses Left Ctrl plus the arrow keys for stratagem entry. Change the mapping in **Settings** if needed.
+5. Tap a stratagem tile. Hold **STOP**/tap **STOP** to cancel; held inputs are released when the sequence ends or the link closes.
+
+The receiver discovers the phone on the local network and connects outward; no Windows inbound firewall rule, address entry, or PIN is required. Both devices must be on the same Wi-Fi network with local device-to-device traffic enabled. Guest networks, VPNs, or router client isolation may block discovery.
+
+## Timing and reliability
+
+The default 55 ms key-down pulse and 25 ms inter-key gap are tuned to provide distinct input edges while keeping a nine-direction sequence under one second before local-network acknowledgements. Existing installs using the older 40 ms or 90 ms defaults migrate to 55 ms. Increase **Arrow hold time** in Settings if the game drops inputs; very short pulses may be missed by the game's input polling.
+
+The Windows receiver uses the Windows `SendInput` API and marks arrow keys as extended keys. It reports input-injection failures instead of silently treating them as successful.
+
+## Stratagem catalog
+
+The offline catalog currently contains 119 entries, including 20 mission-specific call-ins. Direction codes, source labels, and catalog entries are transcribed from the [Helldivers Wiki stratagem tables](https://helldivers.wiki.gg/wiki/Stratagems). The app does not download the catalog at runtime.
+
+Refresh and validate the catalog on Windows:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\refresh_catalog.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate_catalog.ps1
 ```
 
-## Install
+The validator checks entry identifiers, codes, permanent stratagem sequences, and that only Mission-category entries are marked as mission-specific. Catalog data can change as the game changes; report mismatches with the game version and the affected stratagem.
 
-Enable Install unknown apps for the APK source, then install:
+## Build from source
+
+Requirements: JDK 17, Android SDK Platform 35, .NET 8 SDK, and Windows for building the receiver icon/publish package.
 
 ```bat
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+gradlew.bat testDebugUnitTest assembleRelease
+dotnet publish windows-receiver\StratagemCaller.Receiver.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o windows-receiver\publish
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test_receiver.ps1
 ```
 
-Unsigned release builds require a signing key. Create and store a release keystore locally; never commit it or signing passwords.
+The APK is signed with the local Gradle debug key for sideload testing. It is not a Play Store signing key; keep the same key to install updates over an existing sideloaded copy. Do not distribute a release APK signed with the shared debug key as a production app.
 
-## Bluetooth setup
+## Project references
 
-1. Keep the app in the foreground.
-2. Grant Bluetooth permissions.
-3. Pair Windows with the phone only after Bluetooth HID support is confirmed on the device.
-4. Use the input test before entering gameplay.
-5. Android/HID support varies by device and OEM.
+- [Helldivers Wiki — Stratagems](https://helldivers.wiki.gg/wiki/Stratagems) — offline catalog source.
+- [Windows `SendInput` reference](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-sendinput) — receiver keyboard injection API.
+- [Android developer guide — app icons](https://developer.android.com/develop/ui/views/launch/icon_design_adaptive) — adaptive launcher icon behavior.
+- [MIT License](LICENSE) — source code license.
+- App branding assets in [`branding/`](branding/) were supplied for this project; see its README for artwork terms.
 
-## USB bridge
+## Limitations and privacy
 
-A phone cannot directly act as a universal USB game controller. Use an Android OTG-capable phone connected to a compatible HID bridge (ESP32-S3 or Raspberry Pi with HID firmware), then connect the bridge to Windows.
+- The game and receiver must run on the same Windows device; the receiver does not control a separate console or another PC.
+- This project sends keyboard input only. It does not create a virtual controller or bypass game input restrictions.
+- The receiver communicates over the local Wi-Fi network and does not send telemetry or use a cloud service. The phone requires local network access for pairing and input.
+- This is an unofficial fan-made utility and is not affiliated with Arrowhead Game Studios or Sony Interactive Entertainment. Helldivers 2 is a trademark of its owner.
 
-Protocol line format:
+## Contributing and support
 
-- `SC1:H;` handshake
-- `SC1:I;` controller identification
-- `SC1:D:<U|D|L|R>:H;` hold direction
-- `SC1:D:<U|D|L|R>:L;` release direction
-- `SC1:C;` cancel
-- `SC1:R;` release all
-- `SC1:HBT;` heartbeat
-
-## Database
-
-The catalog is maintained in `app/src/main/assets/stratagems/catalog.json` and imported into Room. Entries include source and verification metadata. Community, unreleased, and fiction entries are not intentionally included; entries marked `verify` require a live catalog cross-check.
-
-## GitHub release
-
-GitHub Actions builds debug/release APK artifacts. Configure repository release permissions and upload generated APK files to a GitHub Release. Use Android App Bundle signing or a locally maintained release keystore for updates.
-
-## License
-
-MIT. No copyrighted Helldivers 2 artwork is bundled.
+Please include Android version, Windows version, game input bindings, receiver log output, and a reproduction sequence when reporting a connection or input issue. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SUPPORT.md](SUPPORT.md).
